@@ -1,180 +1,149 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Learnify AI Engine</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body{
-  font-family:Arial;
-  background:#0b0b12;
-  color:#00f7ff;
-  text-align:center;
-  padding:30px;
-}
-
-button{
-  margin:8px;
-  padding:10px 20px;
-  border-radius:12px;
-  border:2px solid #00f7ff;
-  background:#05050a;
-  color:#00f7ff;
-  cursor:pointer;
-}
-
-button:hover{
-  transform:scale(1.05);
-}
-
-input{
-  padding:8px;
-  margin:6px;
-  width:220px;
-}
-</style>
-</head>
-
-<body>
-
-<h1>Learnify AI Engine</h1>
-
-<h3>Generate Quiz</h3>
-<input id="topic" placeholder="Enter Topic">
-<button onclick="generateQuiz()">Generate</button>
-
-<div id="quizOutput"></div>
-
-<hr>
-
-<h3>Test AI Opponent</h3>
-<button onclick="testAI()">Simulate AI Answer</button>
-
-<div id="aiResult"></div>
-
-<script>
-
-/* ===============================
-   QUIZ GENERATOR AI
-=================================*/
-
-function generateQuiz(){
-  const topic = document.getElementById("topic").value.trim();
-  if(!topic){ alert("Enter topic!"); return; }
-
-  const quiz = QuizGenerator.generate(topic, 5);
-
-  let html = "<h4>Generated Quiz:</h4>";
-  quiz.forEach((q,i)=>{
-    html += `<p><strong>${i+1}. ${q.question}</strong></p>`;
-    q.answers.forEach(a=>{
-      html += `<p>- ${a}</p>`;
-    });
-  });
-
-  quizOutput.innerHTML = html;
-}
-
-
-/* ===============================
-   AI OPPONENT ENGINE
-=================================*/
-
-class AIEngine {
-
-  constructor(difficulty="medium"){
-    this.setDifficulty(difficulty);
-  }
-
-  setDifficulty(level){
-    const map = {
-      easy:0.5,
-      medium:0.7,
-      hard:0.9
-    };
-    this.accuracy = map[level] || 0.7;
-  }
-
-  answerQuestion(questionObj){
-    const correctChance = Math.random();
-
-    if(correctChance <= this.accuracy){
-      return questionObj.correct;
-    } else {
-      let wrongOptions = questionObj.answers
-        .map((_,i)=>i)
-        .filter(i=>i!==questionObj.correct);
-      return wrongOptions[Math.floor(Math.random()*wrongOptions.length)];
-    }
-  }
-
-}
-
-/* ===============================
-   SIMPLE QUIZ GENERATOR
-=================================*/
-
 class QuizGenerator {
 
-  static generate(topic, amount=5){
+  static generate(topic, amount = 5) {
+    const quiz = [];
 
-    const sampleQuestions = [
-      `What is a basic fact about ${topic}?`,
-      `Which of these relates to ${topic}?`,
-      `What is commonly studied in ${topic}?`,
-      `Why is ${topic} important?`,
-      `Which is true about ${topic}?`
-    ];
-
-    let quiz = [];
-
-    for(let i=0;i<amount;i++){
-
-      let question = sampleQuestions[i % sampleQuestions.length];
-
-      let answers = [
-        "Correct Answer",
-        "Wrong Answer 1",
-        "Wrong Answer 2",
-        "Wrong Answer 3"
-      ];
-
-      let correctIndex = 0;
-
-      quiz.push({
-        question:question,
-        answers:answers.sort(()=>Math.random()-0.5),
-        correct:answers.indexOf("Correct Answer")
-      });
+    for (let i = 0; i < amount; i++) {
+      quiz.push(this.createQuestion(topic));
     }
 
     return quiz;
   }
 
+  static createQuestion(topic) {
+
+    const questionTypes = [
+      "definition",
+      "fact",
+      "comparison",
+      "application",
+      "truefalse"
+    ];
+
+    const type = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+
+    switch (type) {
+
+      case "definition":
+        return this.definitionQuestion(topic);
+
+      case "fact":
+        return this.factQuestion(topic);
+
+      case "comparison":
+        return this.comparisonQuestion(topic);
+
+      case "application":
+        return this.applicationQuestion(topic);
+
+      case "truefalse":
+        return this.trueFalseQuestion(topic);
+
+      default:
+        return this.factQuestion(topic);
+    }
+  }
+
+  static shuffleAnswers(answers, correctIndex) {
+    const correctValue = answers[correctIndex];
+
+    answers = answers.sort(() => Math.random() - 0.5);
+
+    return {
+      answers: answers,
+      correct: answers.indexOf(correctValue)
+    };
+  }
+
+  static definitionQuestion(topic) {
+    const question = `What best describes ${topic}?`;
+
+    const answers = [
+      `A concept related to ${topic}`,
+      `A random unrelated idea`,
+      `An animal species`,
+      `A type of vehicle`
+    ];
+
+    const shuffled = this.shuffleAnswers(answers, 0);
+
+    return {
+      question,
+      answers: shuffled.answers,
+      correct: shuffled.correct
+    };
+  }
+
+  static factQuestion(topic) {
+    const question = `Which statement is most likely true about ${topic}?`;
+
+    const answers = [
+      `${topic} is studied in education`,
+      `${topic} is made of chocolate`,
+      `${topic} lives underwater`,
+      `${topic} only exists at night`
+    ];
+
+    const shuffled = this.shuffleAnswers(answers, 0);
+
+    return {
+      question,
+      answers: shuffled.answers,
+      correct: shuffled.correct
+    };
+  }
+
+  static comparisonQuestion(topic) {
+    const question = `How does ${topic} compare to unrelated objects?`;
+
+    const answers = [
+      `${topic} has distinct characteristics`,
+      `${topic} is identical to a spoon`,
+      `${topic} is a planet`,
+      `${topic} is fictional`
+    ];
+
+    const shuffled = this.shuffleAnswers(answers, 0);
+
+    return {
+      question,
+      answers: shuffled.answers,
+      correct: shuffled.correct
+    };
+  }
+
+  static applicationQuestion(topic) {
+    const question = `Why is ${topic} useful in real life?`;
+
+    const answers = [
+      `${topic} helps people learn and understand`,
+      `${topic} explodes when touched`,
+      `${topic} turns into dust instantly`,
+      `${topic} disappears randomly`
+    ];
+
+    const shuffled = this.shuffleAnswers(answers, 0);
+
+    return {
+      question,
+      answers: shuffled.answers,
+      correct: shuffled.correct
+    };
+  }
+
+  static trueFalseQuestion(topic) {
+
+    const isTrue = Math.random() > 0.5;
+
+    const question = `True or False: ${topic} is important in some field.`;
+
+    const answers = ["True", "False"];
+
+    return {
+      question,
+      answers,
+      correct: isTrue ? 0 : 1
+    };
+  }
+
 }
-
-/* ===============================
-   TEST AI
-=================================*/
-
-function testAI(){
-
-  const sample = {
-    question:"What is 2 + 2?",
-    answers:["4","3","5","22"],
-    correct:0
-  };
-
-  const ai = new AIEngine("hard");
-  const chosen = ai.answerQuestion(sample);
-
-  aiResult.innerHTML =
-    `AI chose: ${sample.answers[chosen]}<br>
-     Correct answer: ${sample.answers[sample.correct]}`;
-}
-
-</script>
-
-</body>
-</html>
