@@ -5,9 +5,8 @@
   <title>Learnify AI Quiz Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Neon/learnify style */
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       background-color: #0d0d0d;
       color: #00fff7;
       text-align: center;
@@ -72,65 +71,68 @@
 </head>
 <body>
 
-  <h1>Learnify AI Quiz Generator</h1>
-  <textarea id="text-input" placeholder="Paste your text here..."></textarea>
-  <br>
-  <button onclick="generateQuiz()">Generate Quiz</button>
+<h1>Learnify AI Quiz Generator</h1>
+<textarea id="text-input" placeholder="Paste your text here..."></textarea>
+<br>
+<button onclick="generateQuiz()">Generate Quiz</button>
 
-  <div id="quiz-container"></div>
+<div id="quiz-container"></div>
 
-  <script>
-    // Utility to pick random elements
-    function getRandom(arr, n) {
-      const shuffled = arr.slice().sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, n);
-    }
+<script>
+function getRandom(arr, n) {
+  const shuffled = arr.slice().sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, n);
+}
 
-    // Main quiz generator
-    function generateQuiz() {
-      const text = document.getElementById("text-input").value.trim();
-      if (!text) return alert("Please paste some text!");
+function generateQuiz() {
+  const text = document.getElementById("text-input").value.trim();
+  if (!text) return alert("Please paste some text!");
 
-      const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
-      const words = text.match(/\b\w+\b/g) || [];
-      
-      // Simple topic detection: count most frequent non-common words
-      const commonWords = ["the","is","and","of","to","a","in","that","it","with","as","for","on","this","an","by","are","or"];
-      const freq = {};
-      words.forEach(w => {
-        const lw = w.toLowerCase();
-        if (!commonWords.includes(lw)) freq[lw] = (freq[lw] || 0) + 1;
-      });
-      const topics = Object.keys(freq).sort((a,b) => freq[b]-freq[a]).slice(0,5);
+  const words = text.match(/\b\w+\b/g) || [];
+  const commonWords = ["the","is","and","of","to","a","in","that","it","with","as","for","on","this","an","by","are","or"];
+  
+  // Find top 5 frequent words for topics
+  const freq = {};
+  words.forEach(w => {
+    const lw = w.toLowerCase();
+    if (!commonWords.includes(lw)) freq[lw] = (freq[lw] || 0) + 1;
+  });
+  const topics = Object.keys(freq).sort((a,b) => freq[b]-freq[a]).slice(0,5);
 
-      // Generate questions
-      const quizContainer = document.getElementById("quiz-container");
-      quizContainer.innerHTML = "";
-      topics.forEach((topic, i) => {
-        // Pick a sentence containing the topic
-        const relatedSentences = sentences.filter(s => s.toLowerCase().includes(topic));
-        const questionText = relatedSentences.length > 0 ? relatedSentences[0] : `What is ${topic}?`;
+  const quizContainer = document.getElementById("quiz-container");
+  quizContainer.innerHTML = "";
 
-        // Generate 4 answers: one correct, 3 random
-        const correctAnswer = topic;
-        const wrongAnswers = getRandom(words.filter(w => w.toLowerCase() !== topic).map(w => w.charAt(0).toUpperCase() + w.slice(1)), 3);
-        const allAnswers = getRandom([correctAnswer, ...wrongAnswers], 4);
+  topics.forEach((topic, i) => {
+    // Generate a question about the topic
+    const questionText = `Which of the following best relates to "${topic}"?`;
 
-        // Build HTML
-        const qDiv = document.createElement("div");
-        qDiv.className = "question";
-        qDiv.innerHTML = `<strong>Q${i+1}: ${questionText}</strong><div class="answers"></div>`;
-        const answersDiv = qDiv.querySelector(".answers");
-        allAnswers.forEach(a => {
-          const btn = document.createElement("button");
-          btn.textContent = a;
-          btn.onclick = () => alert(a === correctAnswer ? "✅ Correct!" : "❌ Wrong!");
-          answersDiv.appendChild(btn);
-        });
-        quizContainer.appendChild(qDiv);
-      });
-    }
-  </script>
+    // Correct answer is the topic
+    const correctAnswer = topic.charAt(0).toUpperCase() + topic.slice(1);
+
+    // Generate wrong answers from other words
+    const wrongAnswers = getRandom(
+      words.filter(w => w.toLowerCase() !== topic).map(w => w.charAt(0).toUpperCase() + w.slice(1)), 
+      3
+    );
+
+    const allAnswers = getRandom([correctAnswer, ...wrongAnswers], 4);
+
+    const qDiv = document.createElement("div");
+    qDiv.className = "question";
+    qDiv.innerHTML = `<strong>Q${i+1}: ${questionText}</strong><div class="answers"></div>`;
+    const answersDiv = qDiv.querySelector(".answers");
+
+    allAnswers.forEach(a => {
+      const btn = document.createElement("button");
+      btn.textContent = a;
+      btn.onclick = () => alert(a === correctAnswer ? "✅ Correct!" : `❌ Wrong! Correct: ${correctAnswer}`);
+      answersDiv.appendChild(btn);
+    });
+
+    quizContainer.appendChild(qDiv);
+  });
+}
+</script>
 
 </body>
 </html>
