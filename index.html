@@ -1,159 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Learnify AI Quiz Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: Arial;
-      background-color: #0d0d0d;
-      color: #00fff7;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      text-shadow: 0 0 10px #00fff7, 0 0 20px #00fff7;
-    }
-    textarea {
-      width: 80%;
-      height: 150px;
-      padding: 10px;
-      font-size: 16px;
-      border: 2px solid #00fff7;
-      background-color: #111;
-      color: #00fff7;
-      margin-bottom: 10px;
-      border-radius: 8px;
-    }
-    button {
-      background: #00fff7;
-      border: none;
-      padding: 12px 20px;
-      font-size: 16px;
-      margin: 5px;
-      cursor: pointer;
-      color: #0d0d0d;
-      font-weight: bold;
-      border-radius: 8px;
-      transition: 0.2s;
-    }
-    button:hover {
-      box-shadow: 0 0 20px #00fff7;
-    }
-    #quiz-container {
-      margin-top: 20px;
-      text-align: left;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .question {
-      background-color: #111;
-      border: 1px solid #00fff7;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px #00fff7;
-    }
-    .answers button {
-      display: block;
-      width: 100%;
-      margin-top: 5px;
-      background: #00fff7;
-      color: #0d0d0d;
-      border-radius: 5px;
-    }
-    .answers button:hover {
-      box-shadow: 0 0 15px #00fff7;
-    }
-    #loading {
-      display: none;
-      font-size: 18px;
-      margin-top: 10px;
-      color: #ff00ff;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Learnify AI Quiz Generator (Offline)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    font-family: Arial;
+    background-color: #0d0d0d;
+    color: #00fff7;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 {
+    text-shadow: 0 0 10px #00fff7, 0 0 20px #00fff7;
+  }
+  textarea {
+    width: 80%;
+    height: 150px;
+    padding: 10px;
+    font-size: 16px;
+    border: 2px solid #00fff7;
+    background-color: #111;
+    color: #00fff7;
+    margin-bottom: 10px;
+    border-radius: 8px;
+  }
+  button {
+    background: #00fff7;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    margin: 5px;
+    cursor: pointer;
+    color: #0d0d0d;
+    font-weight: bold;
+    border-radius: 8px;
+    transition: 0.2s;
+  }
+  button:hover {
+    box-shadow: 0 0 20px #00fff7;
+  }
+  #quiz-container {
+    margin-top: 20px;
+    text-align: left;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .question {
+    background-color: #111;
+    border: 1px solid #00fff7;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 5px #00fff7;
+  }
+  .answers button {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    background: #00fff7;
+    color: #0d0d0d;
+    border-radius: 5px;
+  }
+  .answers button:hover {
+    box-shadow: 0 0 15px #00fff7;
+  }
+</style>
 </head>
 <body>
 
-<h1>Learnify AI Quiz Generator</h1>
+<h1>Learnify AI Quiz Generator (Offline)</h1>
 <textarea id="text-input" placeholder="Paste your text here..."></textarea>
 <br>
 <button onclick="generateQuiz()">Generate Quiz</button>
-<div id="loading">Generating AI questions... ⏳</div>
 <div id="quiz-container"></div>
 
 <script>
-async function generateQuiz() {
+// Utility to pick random elements from an array
+function getRandom(arr, n) {
+  const shuffled = arr.slice().sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, n);
+}
+
+// Main offline AI-like quiz generator
+function generateQuiz() {
   const text = document.getElementById("text-input").value.trim();
   if (!text) return alert("Please paste some text!");
 
   const quizContainer = document.getElementById("quiz-container");
   quizContainer.innerHTML = "";
-  document.getElementById("loading").style.display = "block";
 
-  try {
-    // Replace "YOUR_API_KEY_HERE" with your OpenAI API key
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer YOUR_API_KEY_HERE"
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful assistant that generates multiple-choice quiz questions."
-          },
-          {
-            role: "user",
-            content: `Create 5 multiple-choice questions with 1 correct answer and 3 wrong answers from the following text:\n\n${text}\n\nFormat the answer choices in JSON like: [{"question": "...", "choices": ["A","B","C","D"], "answer": "A"}]`
-          }
-        ],
-        temperature: 0.7
-      })
-    });
+  // Split text into words and sentences
+  const words = text.match(/\b\w+\b/g) || [];
+  const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
+  // Count word frequency to detect topics
+  const commonWords = ["the","is","and","of","to","a","in","that","it","with","as","for","on","this","an","by","are","or"];
+  const freq = {};
+  words.forEach(w => {
+    const lw = w.toLowerCase();
+    if (!commonWords.includes(lw) && lw.length > 3) freq[lw] = (freq[lw] || 0) + 1;
+  });
+  const topics = Object.keys(freq).sort((a,b) => freq[b]-freq[a]).slice(0,5);
 
-    // Try to parse JSON from GPT output
-    let questions = [];
-    try {
-      questions = JSON.parse(content);
-    } catch (e) {
-      alert("Error parsing AI output. Try shortening the text or checking API response.");
-      console.log(content);
-      document.getElementById("loading").style.display = "none";
-      return;
-    }
-
-    // Display questions
-    questions.forEach((q, i) => {
-      const qDiv = document.createElement("div");
-      qDiv.className = "question";
-      qDiv.innerHTML = `<strong>Q${i+1}: ${q.question}</strong><div class="answers"></div>`;
-      const answersDiv = qDiv.querySelector(".answers");
-
-      q.choices.forEach(choice => {
-        const btn = document.createElement("button");
-        btn.textContent = choice;
-        btn.onclick = () => alert(choice === q.answer ? "✅ Correct!" : `❌ Wrong! Correct: ${q.answer}`);
-        answersDiv.appendChild(btn);
-      });
-
-      quizContainer.appendChild(qDiv);
-    });
-
-  } catch (err) {
-    console.error(err);
-    alert("Error generating quiz. Check console for details.");
+  if(topics.length === 0) {
+    alert("Could not detect topics. Try using more detailed text.");
+    return;
   }
 
-  document.getElementById("loading").style.display = "none";
+  // Generate a question for each topic
+  topics.forEach((topic, i) => {
+    // Find a sentence containing the topic
+    const relatedSentences = sentences.filter(s => s.toLowerCase().includes(topic));
+    const baseSentence = relatedSentences.length > 0 ? relatedSentences[0] : `What is ${topic}?`;
+
+    // Create a question that describes the topic
+    const questionText = `What best describes "${topic}"?`;
+
+    // Correct answer is the topic
+    const correctAnswer = topic.charAt(0).toUpperCase() + topic.slice(1);
+
+    // Wrong answers: random words from text
+    const wrongAnswers = getRandom(
+      words.filter(w => w.toLowerCase() !== topic).map(w => w.charAt(0).toUpperCase() + w.slice(1)), 
+      3
+    );
+
+    const allAnswers = getRandom([correctAnswer, ...wrongAnswers], 4);
+
+    // Build HTML
+    const qDiv = document.createElement("div");
+    qDiv.className = "question";
+    qDiv.innerHTML = `<strong>Q${i+1}: ${questionText}</strong><div class="answers"></div>`;
+    const answersDiv = qDiv.querySelector(".answers");
+
+    allAnswers.forEach(a => {
+      const btn = document.createElement("button");
+      btn.textContent = a;
+      btn.onclick = () => alert(a === correctAnswer ? "✅ Correct!" : `❌ Wrong! Correct: ${correctAnswer}`);
+      answersDiv.appendChild(btn);
+    });
+
+    quizContainer.appendChild(qDiv);
+  });
 }
 </script>
 
