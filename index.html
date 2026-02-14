@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Learnify AI Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family:Arial;
+  background:#0b0b12;
+  color:#00f7ff;
+  text-align:center;
+  padding:30px;
+}
+
+button{
+  margin:8px;
+  padding:10px 20px;
+  border-radius:12px;
+  border:2px solid #00f7ff;
+  background:#05050a;
+  color:#00f7ff;
+  cursor:pointer;
+}
+
+button:hover{
+  transform:scale(1.05);
+}
+
+input{
+  padding:8px;
+  margin:6px;
+  width:220px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Learnify AI Engine</h1>
+
+<h3>Generate Quiz</h3>
+<input id="topic" placeholder="Enter Topic">
+<button onclick="generateQuiz()">Generate</button>
+
+<div id="quizOutput"></div>
+
+<hr>
+
+<h3>Test AI Opponent</h3>
+<button onclick="testAI()">Simulate AI Answer</button>
+
+<div id="aiResult"></div>
+
+<script>
+
+/* ===============================
+   QUIZ GENERATOR AI
+=================================*/
+
+function generateQuiz(){
+  const topic = document.getElementById("topic").value.trim();
+  if(!topic){ alert("Enter topic!"); return; }
+
+  const quiz = QuizGenerator.generate(topic, 5);
+
+  let html = "<h4>Generated Quiz:</h4>";
+  quiz.forEach((q,i)=>{
+    html += `<p><strong>${i+1}. ${q.question}</strong></p>`;
+    q.answers.forEach(a=>{
+      html += `<p>- ${a}</p>`;
+    });
+  });
+
+  quizOutput.innerHTML = html;
+}
+
+
+/* ===============================
+   AI OPPONENT ENGINE
+=================================*/
+
+class AIEngine {
+
+  constructor(difficulty="medium"){
+    this.setDifficulty(difficulty);
+  }
+
+  setDifficulty(level){
+    const map = {
+      easy:0.5,
+      medium:0.7,
+      hard:0.9
+    };
+    this.accuracy = map[level] || 0.7;
+  }
+
+  answerQuestion(questionObj){
+    const correctChance = Math.random();
+
+    if(correctChance <= this.accuracy){
+      return questionObj.correct;
+    } else {
+      let wrongOptions = questionObj.answers
+        .map((_,i)=>i)
+        .filter(i=>i!==questionObj.correct);
+      return wrongOptions[Math.floor(Math.random()*wrongOptions.length)];
+    }
+  }
+
+}
+
+/* ===============================
+   SIMPLE QUIZ GENERATOR
+=================================*/
+
+class QuizGenerator {
+
+  static generate(topic, amount=5){
+
+    const sampleQuestions = [
+      `What is a basic fact about ${topic}?`,
+      `Which of these relates to ${topic}?`,
+      `What is commonly studied in ${topic}?`,
+      `Why is ${topic} important?`,
+      `Which is true about ${topic}?`
+    ];
+
+    let quiz = [];
+
+    for(let i=0;i<amount;i++){
+
+      let question = sampleQuestions[i % sampleQuestions.length];
+
+      let answers = [
+        "Correct Answer",
+        "Wrong Answer 1",
+        "Wrong Answer 2",
+        "Wrong Answer 3"
+      ];
+
+      let correctIndex = 0;
+
+      quiz.push({
+        question:question,
+        answers:answers.sort(()=>Math.random()-0.5),
+        correct:answers.indexOf("Correct Answer")
+      });
+    }
+
+    return quiz;
+  }
+
+}
+
+/* ===============================
+   TEST AI
+=================================*/
+
+function testAI(){
+
+  const sample = {
+    question:"What is 2 + 2?",
+    answers:["4","3","5","22"],
+    correct:0
+  };
+
+  const ai = new AIEngine("hard");
+  const chosen = ai.answerQuestion(sample);
+
+  aiResult.innerHTML =
+    `AI chose: ${sample.answers[chosen]}<br>
+     Correct answer: ${sample.answers[sample.correct]}`;
+}
+
+</script>
+
+</body>
+</html>
