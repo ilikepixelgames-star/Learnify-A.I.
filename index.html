@@ -2,25 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Learnify AI Quiz Generator</title>
+<title>Learnify Sandbox + AI Quiz Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #0b0b12;
-  color: white;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
+body{
+  font-family:Arial;
+  background:#0b0b12;
+  color:white;
+  display:flex;
+  justify-content:center;
+  padding:20px;
 }
-
 .container{
   display:flex;
   gap:40px;
   flex-wrap:wrap;
 }
-
 .panel{
   border:2px solid #00f7ff;
   border-radius:16px;
@@ -28,7 +26,6 @@ body {
   min-width:320px;
   box-shadow:0 0 12px #00f7ff;
 }
-
 button{
   margin:6px;
   padding:10px 18px;
@@ -38,24 +35,20 @@ button{
   color:#00f7ff;
   cursor:pointer;
 }
-
 button:hover{
   transform:scale(1.05);
 }
-
 button.archive{
   border-color:#ff004c;
   color:#ff004c;
 }
-
 input{
   margin:4px;
   padding:6px;
   width:90%;
 }
-
-ul { margin-top: 10px; text-align: left; }
-li { margin-bottom: 4px; }
+ul{ margin-top:10px; }
+li{ margin-bottom:5px; }
 </style>
 </head>
 
@@ -63,170 +56,306 @@ li { margin-bottom: 4px; }
 
 <div class="container">
 
-<!-- LEFT PANEL: Topic Input -->
-<div class="panel">
-<h3>AI Quiz Generator</h3>
-<input id="topic" placeholder="Enter topic (e.g., Math, Biology)">
-<button onclick="generateQuiz()">Generate Quiz</button>
-<button onclick="resetQuiz()">Reset Quiz</button>
+  <!-- CREATE QUIZ PANEL -->
+  <div class="panel" id="create-panel">
+    <h3>Create Quiz</h3>
 
-<h4>Generated Questions</h4>
-<ul id="quizList"></ul>
-</div>
+    <input id="question" placeholder="Question"><br>
+    <input id="a1" placeholder="Answer 1">
+    <input id="a2" placeholder="Answer 2">
+    <input id="a3" placeholder="Answer 3">
+    <input id="a4" placeholder="Answer 4"><br>
+    <input id="correct" type="number" placeholder="Correct (1-4)" min="1" max="4"><br>
 
-<!-- RIGHT PANEL: Play as AI Opponent -->
-<div class="panel">
-<h3>Play Quiz</h3>
-<div id="gameView" style="display:none;">
-  <h4 id="gameQuestion"></h4>
-  <div id="answers"></div>
-  <p id="scoreDisplay"></p>
-  <button onclick="endGame()" class="archive">Exit Game</button>
-</div>
+    <button onclick="addQuestion()">Add Question</button>
+    <button onclick="saveQuiz()">Save Quiz</button>
+    <button onclick="showMyQuizzes()">My Quizzes</button>
+    <button onclick="generateAIQuiz()">AI Generate Quiz</button>
+    <button onclick="resetEverything()">Reset</button>
 
-<button id="startGameBtn" onclick="startGame()">Start Quiz Game</button>
-</div>
+    <ul id="questionList"></ul>
+  </div>
+
+  <!-- MY QUIZZES PANEL -->
+  <div class="panel" id="my-quizzes-panel" style="display:none;">
+    <h3>My Quizzes</h3>
+    <ul id="myQuizzesList"></ul>
+    <button onclick="backToCreate()">Back to Create</button>
+    <button onclick="useQuiz()">Use Quiz to Play</button>
+    <button class="archive" onclick="deleteQuiz()">Delete Quiz</button>
+  </div>
+
+  <!-- MULTIPLAYER PANEL -->
+  <div class="panel">
+    <h3>Multiplayer Lobby</h3>
+    <div id="lobbyView">
+      <button onclick="hostGame()">Host Game</button><br>
+      <button onclick="joinGame()">Join Game</button><br>
+      <button onclick="showPlayers()">Players Joined</button><br>
+      <button onclick="startGame()">Start Game</button><br>
+      <button onclick="backToLobby()">Back to Lobby</button>
+    </div>
+
+    <div id="gameView" style="display:none;">
+      <h3 id="gameQuestion"></h3>
+      <div id="answers"></div>
+      <p id="scoreDisplay"></p>
+      <button class="archive" onclick="backToLobby()">Exit Game</button>
+    </div>
+  </div>
 
 </div>
 
 <script>
-/* ================= AI Quiz Generator ================= */
-class QuizGenerator {
+/* ------------------ QUIZ DATA ------------------ */
+let questions = [];
+let currentQuizName = "";
+let lobby = null;
+let currentQuestionIndex = 0;
+let score = 0;
 
-  static shuffleAnswers(answers, correctIndex) {
-    let arr = answers.map((a,i)=>({a,i}));
-    for(let i=arr.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [arr[i],arr[j]]=[arr[j],arr[i]];
-    }
-    const newCorrect = arr.findIndex(x=>x.i===correctIndex);
-    return {answers: arr.map(x=>x.a), correct: newCorrect};
+/* ------------------ CREATE QUIZ ------------------ */
+function addQuestion(){
+  const q = question.value.trim();
+  const answers = [a1.value,a2.value,a3.value,a4.value];
+  const correctIndex = parseInt(correct.value)-1;
+
+  if(!q || answers.includes("") || correctIndex<0 || correctIndex>3){
+    alert("Fill everything correctly!");
+    return;
   }
 
+  questions.push({q,answers,correct:correctIndex});
+  updateQuestionList();
+
+  question.value=""; a1.value=""; a2.value=""; a3.value=""; a4.value=""; correct.value="";
+}
+
+function updateQuestionList(){
+  questionList.innerHTML="";
+  questions.forEach((q,i)=>{
+    const li=document.createElement("li");
+    li.textContent=(i+1)+". "+q.q;
+    questionList.appendChild(li);
+  });
+}
+
+function saveQuiz(){
+  if(questions.length===0){ alert("No questions!"); return; }
+  const name = prompt("Enter quiz name:", "Untitled Quiz");
+  if(!name) return;
+  let saved = JSON.parse(localStorage.getItem("myQuizzes")||"{}");
+  saved[name] = questions;
+  localStorage.setItem("myQuizzes",JSON.stringify(saved));
+  alert("Quiz saved!");
+}
+
+/* ------------------ MY QUIZZES ------------------ */
+function showMyQuizzes(){
+  document.getElementById("create-panel").style.display="none";
+  document.getElementById("my-quizzes-panel").style.display="block";
+  renderMyQuizzes();
+}
+
+function backToCreate(){
+  document.getElementById("create-panel").style.display="block";
+  document.getElementById("my-quizzes-panel").style.display="none";
+}
+
+function renderMyQuizzes(){
+  const listEl = document.getElementById("myQuizzesList");
+  listEl.innerHTML="";
+  const saved = JSON.parse(localStorage.getItem("myQuizzes")||"{}");
+  if(Object.keys(saved).length===0){
+    listEl.innerHTML="<li>No quizzes yet!</li>"; return;
+  }
+  for(const name in saved){
+    const li = document.createElement("li");
+    li.textContent = name;
+    listEl.appendChild(li);
+  }
+}
+
+function useQuiz(){
+  const name = prompt("Enter quiz name to use:");
+  if(!name) return;
+  const saved = JSON.parse(localStorage.getItem("myQuizzes")||"{}");
+  if(!saved[name]){
+    alert("Quiz not found!"); return;
+  }
+  questions = saved[name];
+  alert("Quiz loaded! Now you can host it in multiplayer.");
+}
+
+function deleteQuiz(){
+  const name = prompt("Enter quiz name to delete:");
+  if(!name) return;
+  const saved = JSON.parse(localStorage.getItem("myQuizzes")||"{}");
+  if(saved[name]){
+    delete saved[name];
+    localStorage.setItem("myQuizzes",JSON.stringify(saved));
+    alert("Quiz deleted!");
+    renderMyQuizzes();
+  }
+}
+
+/* ------------------ AI GENERATOR ------------------ */
+class QuizGenerator {
+
   static createQuestion(topic) {
-    const lowerTopic = topic.toLowerCase();
-
-    if(lowerTopic.includes("math")){
-      return this.mathQuestion();
-    }
-
-    return this.generalQuestion(topic);
+    const rnd = Math.random();
+    if(topic.toLowerCase().includes("math") || rnd<0.3) return this.mathQuestion();
+    else if(rnd<0.6) return this.factQuestion(topic);
+    else return this.thoughtQuestion(topic);
   }
 
   static mathQuestion() {
-    const num1=Math.floor(Math.random()*20)+1;
-    const num2=Math.floor(Math.random()*20)+1;
-    const operations=["+","-","*"];
-    const op = operations[Math.floor(Math.random()*operations.length)];
+    const num1 = Math.floor(Math.random()*50)+1;
+    const num2 = Math.floor(Math.random()*50)+1;
+    const ops = ["+","-","*"];
+    const op = ops[Math.floor(Math.random()*ops.length)];
     let correct;
     if(op==="+") correct=num1+num2;
     if(op==="-") correct=num1-num2;
     if(op==="*") correct=num1*num2;
 
     const question=`What is ${num1} ${op} ${num2}?`;
-    let answers=[
-      correct,
-      correct+Math.floor(Math.random()*5)+1,
-      correct-Math.floor(Math.random()*5)-1,
-      correct+Math.floor(Math.random()*10)-5
-    ].map(a=>a.toString());
-
-    return this.shuffleAnswers(answers,0);
+    let answers=[correct, correct+Math.floor(Math.random()*10)+1, correct-Math.floor(Math.random()*10)-1, correct+Math.floor(Math.random()*20)-10].map(a=>a.toString());
+    const correctIndex=Math.floor(Math.random()*4);
+    [answers[0],answers[correctIndex]]=[answers[correctIndex],answers[0]];
+    return {question,answers,correct:correctIndex};
   }
 
-  static generalQuestion(topic){
-    const structures=[
-      `Which best relates to ${topic}?`,
+  static factQuestion(topic){
+    const facts = [
+      `A key fact about ${topic} is related to its history.`,
+      `${topic} is commonly used in daily life.`,
+      `${topic} has multiple applications in science.`,
+      `${topic} can be studied in schools.`,
+      `Experts in ${topic} often work in specialized fields.`
+    ];
+    const correct = facts[Math.floor(Math.random()*facts.length)];
+    let wrongs = [
+      `${topic} is a mythical creature`,
+      `${topic} only exists in movies`,
+      `${topic} disappears randomly`,
+      `${topic} is not real`
+    ];
+    wrongs.sort(()=>0.5-Math.random());
+    const answers=[correct,...wrongs.slice(0,3)];
+    const correctIndex=Math.floor(Math.random()*4);
+    [answers[0],answers[correctIndex]]=[answers[correctIndex],answers[0]];
+    return {question:`Which statement is true about ${topic}?`, answers, correct:correctIndex};
+  }
+
+  static thoughtQuestion(topic){
+    const stems = [
       `Why is ${topic} important?`,
-      `What is a key idea in ${topic}?`,
-      `Which field studies ${topic}?`,
-      `What is true about ${topic}?`
+      `Which of the following best explains ${topic}?`,
+      `What is a main concept in ${topic}?`,
+      `How is ${topic} applied in real life?`
     ];
-    const question = structures[Math.floor(Math.random()*structures.length)];
-    const correct = `${topic} is studied and applied in real-world scenarios`;
-    const wrongs=[
-      `${topic} is a type of fruit`,
-      `${topic} only exists in video games`,
-      `${topic} disappears every year`,
-      `${topic} is unrelated to education`
+    const question = stems[Math.floor(Math.random()*stems.length)];
+    const correct = `The correct concept related to ${topic}`;
+    const wrongs = [
+      `An unrelated fact about something else`,
+      `A completely false statement`,
+      `Something fictional`,
+      `A misleading option`
     ];
-
-    let answers=[correct, wrongs[Math.floor(Math.random()*wrongs.length)], 
-                 wrongs[Math.floor(Math.random()*wrongs.length)],
-                 wrongs[Math.floor(Math.random()*wrongs.length)]];
-    return this.shuffleAnswers(answers,0);
+    let answers = [correct,...wrongs.slice(0,3)];
+    const correctIndex=Math.floor(Math.random()*4);
+    [answers[0],answers[correctIndex]]=[answers[correctIndex],answers[0]];
+    return { question, answers, correct: correctIndex };
   }
 }
 
-/* ================= GLOBALS ================= */
-let questions = [];
-let currentQuestionIndex = 0;
-let score = 0;
-
-/* ================= UI FUNCTIONS ================= */
-function generateQuiz(){
-  const topic=document.getElementById("topic").value.trim();
-  if(!topic){ alert("Enter a topic!"); return; }
-  const qObj = QuizGenerator.createQuestion(topic);
-  questions.push(qObj);
-
-  const li=document.createElement("li");
-  li.textContent=qObj.answers.map((a,i)=>i===qObj.correct?`*${a}`:a).join(" | ");
-  document.getElementById("quizList").appendChild(li);
-  document.getElementById("topic").value="";
+function generateAIQuiz(){
+  const topic = prompt("Enter a topic for AI-generated quiz:");
+  if(!topic) return;
+  questions = [];
+  for(let i=0;i<5;i++){
+    questions.push(QuizGenerator.createQuestion(topic));
+  }
+  updateQuestionList();
+  alert("AI quiz generated!");
 }
 
-function resetQuiz(){
-  questions=[];
-  currentQuestionIndex=0;
-  score=0;
-  document.getElementById("quizList").innerHTML="";
-  document.getElementById("gameView").style.display="none";
+/* ------------------ MULTIPLAYER ------------------ */
+function hostGame(){
+  if(questions.length===0){ alert("Create or load a quiz first!"); return; }
+  lobby = { players:["Host"] };
+  alert("Game hosted!");
 }
 
-/* ================= GAME FUNCTIONS ================= */
+function joinGame(){
+  if(!lobby){ alert("No active game!"); return; }
+  const name = prompt("Enter player name:");
+  if(!name) return;
+  lobby.players.push(name);
+  alert(name+" joined!");
+}
+
+function showPlayers(){
+  if(!lobby){ alert("No active game!"); return; }
+  alert("Players:\n"+lobby.players.join("\n"));
+}
+
 function startGame(){
-  if(questions.length===0){ alert("No questions generated!"); return; }
+  if(!lobby){ alert("Host a game first!"); return; }
   currentQuestionIndex=0;
   score=0;
+  document.getElementById("lobbyView").style.display="none";
   document.getElementById("gameView").style.display="block";
   showQuestion();
 }
 
 function showQuestion(){
   if(currentQuestionIndex>=questions.length){
-    document.getElementById("gameQuestion").textContent="Quiz Over!";
-    document.getElementById("answers").innerHTML="";
-    document.getElementById("scoreDisplay").textContent="Score: "+score;
+    gameQuestion.textContent="Game Over!";
+    answers.innerHTML="";
+    scoreDisplay.textContent="Final Score: "+score;
     return;
   }
-
-  const q = questions[currentQuestionIndex];
-  document.getElementById("gameQuestion").textContent=q.question||"AI Generated Question";
-  const answersDiv=document.getElementById("answers");
-  answersDiv.innerHTML="";
+  let q = questions[currentQuestionIndex];
+  gameQuestion.textContent=q.q;
+  answers.innerHTML="";
+  scoreDisplay.textContent="Score: "+score;
 
   q.answers.forEach((ans,i)=>{
-    const btn=document.createElement("button");
+    let btn=document.createElement("button");
     btn.textContent=ans;
     btn.onclick=()=>{
       if(i===q.correct) score++;
       currentQuestionIndex++;
       showQuestion();
     };
-    answersDiv.appendChild(btn);
+    answers.appendChild(btn);
   });
-
-  document.getElementById("scoreDisplay").textContent="Score: "+score;
 }
 
-function endGame(){
+/* ------------------ BACK TO LOBBY ------------------ */
+function backToLobby(){
+  document.getElementById("lobbyView").style.display="block";
   document.getElementById("gameView").style.display="none";
   currentQuestionIndex=0;
   score=0;
-  document.getElementById("gameQuestion").textContent="";
-  document.getElementById("answers").innerHTML="";
-  document.getElementById("scoreDisplay").textContent="";
+  gameQuestion.textContent="";
+  answers.innerHTML="";
+  scoreDisplay.textContent="";
+  lobby=null;
+}
+
+/* ------------------ RESET ------------------ */
+function resetEverything(){
+  if(confirm("Reset everything?")){
+    questions=[];
+    lobby=null;
+    currentQuestionIndex=0;
+    score=0;
+    updateQuestionList();
+    backToLobby();
+  }
 }
 </script>
 
