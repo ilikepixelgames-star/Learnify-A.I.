@@ -67,6 +67,12 @@
     .answers button:hover {
       box-shadow: 0 0 15px #00fff7;
     }
+    #loading {
+      display: none;
+      font-size: 18px;
+      margin-top: 10px;
+      color: #ff00ff;
+    }
   </style>
 </head>
 <body>
@@ -75,62 +81,79 @@
 <textarea id="text-input" placeholder="Paste your text here..."></textarea>
 <br>
 <button onclick="generateQuiz()">Generate Quiz</button>
-
+<div id="loading">Generating AI questions... ⏳</div>
 <div id="quiz-container"></div>
 
 <script>
-function getRandom(arr, n) {
-  const shuffled = arr.slice().sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, n);
-}
-
-function generateQuiz() {
+async function generateQuiz() {
   const text = document.getElementById("text-input").value.trim();
   if (!text) return alert("Please paste some text!");
 
-  const words = text.match(/\b\w+\b/g) || [];
-  const commonWords = ["the","is","and","of","to","a","in","that","it","with","as","for","on","this","an","by","are","or"];
-  
-  // Find top 5 frequent words for topics
-  const freq = {};
-  words.forEach(w => {
-    const lw = w.toLowerCase();
-    if (!commonWords.includes(lw)) freq[lw] = (freq[lw] || 0) + 1;
-  });
-  const topics = Object.keys(freq).sort((a,b) => freq[b]-freq[a]).slice(0,5);
-
   const quizContainer = document.getElementById("quiz-container");
   quizContainer.innerHTML = "";
+  document.getElementById("loading").style.display = "block";
 
-  topics.forEach((topic, i) => {
-    // Generate a question about the topic
-    const questionText = `Which of the following best relates to "${topic}"?`;
-
-    // Correct answer is the topic
-    const correctAnswer = topic.charAt(0).toUpperCase() + topic.slice(1);
-
-    // Generate wrong answers from other words
-    const wrongAnswers = getRandom(
-      words.filter(w => w.toLowerCase() !== topic).map(w => w.charAt(0).toUpperCase() + w.slice(1)), 
-      3
-    );
-
-    const allAnswers = getRandom([correctAnswer, ...wrongAnswers], 4);
-
-    const qDiv = document.createElement("div");
-    qDiv.className = "question";
-    qDiv.innerHTML = `<strong>Q${i+1}: ${questionText}</strong><div class="answers"></div>`;
-    const answersDiv = qDiv.querySelector(".answers");
-
-    allAnswers.forEach(a => {
-      const btn = document.createElement("button");
-      btn.textContent = a;
-      btn.onclick = () => alert(a === correctAnswer ? "✅ Correct!" : `❌ Wrong! Correct: ${correctAnswer}`);
-      answersDiv.appendChild(btn);
+  try {
+    // Replace "YOUR_API_KEY_HERE" with your OpenAI API key
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_API_KEY_HERE"
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that generates multiple-choice quiz questions."
+          },
+          {
+            role: "user",
+            content: `Create 5 multiple-choice questions with 1 correct answer and 3 wrong answers from the following text:\n\n${text}\n\nFormat the answer choices in JSON like: [{"question": "...", "choices": ["A","B","C","D"], "answer": "A"}]`
+          }
+        ],
+        temperature: 0.7
+      })
     });
 
-    quizContainer.appendChild(qDiv);
-  });
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+
+    // Try to parse JSON from GPT output
+    let questions = [];
+    try {
+      questions = JSON.parse(content);
+    } catch (e) {
+      alert("Error parsing AI output. Try shortening the text or checking API response.");
+      console.log(content);
+      document.getElementById("loading").style.display = "none";
+      return;
+    }
+
+    // Display questions
+    questions.forEach((q, i) => {
+      const qDiv = document.createElement("div");
+      qDiv.className = "question";
+      qDiv.innerHTML = `<strong>Q${i+1}: ${q.question}</strong><div class="answers"></div>`;
+      const answersDiv = qDiv.querySelector(".answers");
+
+      q.choices.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.textContent = choice;
+        btn.onclick = () => alert(choice === q.answer ? "✅ Correct!" : `❌ Wrong! Correct: ${q.answer}`);
+        answersDiv.appendChild(btn);
+      });
+
+      quizContainer.appendChild(qDiv);
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Error generating quiz. Check console for details.");
+  }
+
+  document.getElementById("loading").style.display = "none";
 }
 </script>
 
